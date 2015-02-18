@@ -1,20 +1,25 @@
 #!/usr/bin/python
-def dfs (r, c, pacman_r, pacman_c, food_r, food_c, grid):
-    result = dfs_iterative (r, c, pacman_r, pacman_c, food_r, food_c, grid)
-    
+
+import collections
+
+
+def dfs(r, c, pacman_r, pacman_c, food_r, food_c, grid):
+
+    # do the search
+    result = dfs_iterative(r, c, pacman_r, pacman_c, food_r, food_c, grid)
+
     # print expanded nodes
     print len(result['visited'])
     for pos in result['visited']:
         print str(pos[0]) + ' ' + str(pos[1])
-        
+
     # print path
-    path = reconstructPath((food_r, food_c), result['came_from'])
+    path = reconstruct_path((food_r, food_c), result['came_from'])
     print len(path)-1  # distance is -1
     for pos in path:
         print str(pos[0]) + ' ' + str(pos[1])
-    
 
-    
+
 # ---------------------------------------------------------------------------
 # Depth First Search
 #
@@ -28,73 +33,69 @@ def dfs (r, c, pacman_r, pacman_c, food_r, food_c, grid):
 #   Alternative: store not only nodes but also their parents in visited
 # ---------------------------------------------------------------------------
 
-def dfs_iterative (r, c, pacman_r, pacman_c, food_r, food_c, grid):
-    fringe = []  # list of nodes under consideration
-    visited = []  # list of nodes already expanded
-    came_from = [[0 for x in range(c)] for x in range(r)]  # store information on how to get to the goal
-    
+def dfs_iterative(r, c, pacman_r, pacman_c, food_r, food_c, grid):
+    fringe = collections.deque()  # nodes under consideration
+    came_from = {}  # our closed set & node parent information
+    visited = []  # only needed for hackerrank - print expanded nodes at end
+
     # start state
-    fringe.append((pacman_r, pacman_c))
-    
+    start = (pacman_r, pacman_c)
+    fringe.append(start)
+    came_from[start] = None
+
     while len(fringe) > 0:
         current = fringe.pop()  # depth first
         visited.append(current)
-        
-        if isGoal(current, grid):  # done?
-            return { 'visited': visited, 'came_from': came_from }
-        
+
+        if is_goal(current, grid):  # done?
+            return {'visited': visited, 'came_from': came_from}
+
         # expand all possible moves from current
-        neighbours = getNeighbours(current, grid)
-        neighbours = purgeAlreadyExpanded(neighbours, visited, fringe)
-        storeCameFrom(neighbours, current, came_from)
-        fringe += neighbours
-        
+        neighbours = get_neighbours(current, grid)
+        for next in neighbours:
 
-# store information about our path
-def storeCameFrom (nodes, parent, map):
-    for node in nodes:
-        map[node[0]][node[1]] = parent
+            # don't expand (or explore) nodes twice
+            if next not in came_from and next not in fringe:
+                came_from[next] = current
+                fringe.append(next)
 
-# filters our the nodes we have already expanded and/or explored
-def purgeAlreadyExpanded (nodes, visited, fringe):
-    nodes = filter(lambda el: el not in visited, nodes)
-    nodes = filter(lambda el: el not in fringe, nodes)
-    return nodes
-        
+
 # gets all neighbours for a position on the grid, only returns valid moves
-def getNeighbours (pos, grid):
-    neighbours = []
-    neighbours.append(checkValidMove((pos[0]-1, pos[1]),   grid))  # up
-    neighbours.append(checkValidMove((pos[0],   pos[1]-1), grid))  # right
-    neighbours.append(checkValidMove((pos[0],   pos[1]+1), grid))  # left
-    neighbours.append(checkValidMove((pos[0]+1, pos[1]),   grid))  # down
-    neighbours = filter(None, neighbours)  # filter illegal moves
+def get_neighbours(pos, grid):
+    (x, y) = pos
+    neighbours = [(x-1, y  ),  # up
+                  (x,   y-1),  # left
+                  (x,   y+1),  # right
+                  (x+1, y  )]  # down
+    neighbours = filter(lambda x: is_passable(x, grid), neighbours)
     return neighbours
 
-# make sure move is valid
-def checkValidMove (pos, grid):
-    if grid[pos[0]][pos[1]] != '%':  # wall
-        return pos
 
-def isGoal (pos, grid):
+def is_passable(pos, grid):
+    return grid[pos[0]][pos[1]] != '%'  # wall
+
+
+def is_goal(pos, grid):
     return grid[pos[0]][pos[1]] == '.'  # food
 
-def isStart (pos, grid):
+
+def is_start(pos, grid):
     return grid[pos[0]][pos[1]] == 'P'  # pacman
 
-# build the path from the goal back to the start, using our records
-def reconstructPath (goal, came_from):
-    path = [goal]
-    while not isStart(path[-1], grid):
-        current = (path[-1][0], path[-1][1])
-        next = came_from[current[0]][current[1]]
-        path.append(next)
+
+# build path from start to goal
+def reconstruct_path(goal, came_from):
+    current = goal
+    path = [current]
+    while not is_start(current, grid):
+        current = came_from[current]
+        path.append(current)
     return path[::-1]  # reverse
 
 
 
 
-# PREDEFINED TEMPLATE CODE BELOW -----------------------------------
+# PREDEFINED TEMPLATE CODE -----------------------------------------
 pacman_r, pacman_c = [ int(i) for i in raw_input().strip().split() ]
 food_r, food_c = [ int(i) for i in raw_input().strip().split() ]
 r,c = [ int(i) for i in raw_input().strip().split() ]
